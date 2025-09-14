@@ -2,12 +2,20 @@
 # Purpose: Download a fresh base image daily, render a countdown text on it,
 #          set it as the desktop wallpaper, and schedule daily + logon updates.
 
-# --- self-elevate once if not admin ---
+# --- self-elevate (silent) once if not admin ---
 if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
     ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Start-Process -FilePath "powershell.exe" -Verb RunAs -ArgumentList @(
-        "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$PSCommandPath`""
-    )
+    try {
+        $vbsPath = Join-Path $env:TEMP "elevate_run.vbs"
+        $escaped = $PSCommandPath.Replace("""","""""")  # escape quotes for VBS
+        $vbs = @"
+Set sh = CreateObject("Shell.Application")
+' Run elevated (UAC), hidden window (0)
+sh.ShellExecute "powershell.exe", "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""$escaped""", "", "runas", 0
+"@
+        Set-Content -Path $vbsPath -Value $vbs -Encoding ASCII
+        Start-Process -FilePath "wscript.exe" -ArgumentList "`"$vbsPath`""
+    } catch { }
     exit
 }
 # --- end self-elevate ---
@@ -32,19 +40,10 @@ function Download-BaseImage([string]$RemoteImageUrl, [string]$BaseImagePath) {
     try {
         $u = $RemoteImageUrl -replace '[\u200E\u200F\u202A-\u202E]', ''  # remove bidi marks
         $u = $u.Trim()
+        if (-not [Uri]::IsWellFormedUriString($u, [UriKind]::Absolute)) { throw "Bad remoteImageUrl: '$u'" }
 
-        if (-not [Uri]::IsWellFormedUriString($u, [UriKind]::Absolute)) {
-            throw "Bad remoteImageUrl: '$u'"
-        }
-
-        # ----- PowerShell 5 compatible (no ternary) -----
-        if ($u -match '\?') {
-            $joinChar = '&'
-        } else {
-            $joinChar = '?'
-        }
+        if ($u -match '\?') { $joinChar = '&' } else { $joinChar = '?' }
         $downloadUri = "$u$joinChar" + "ts=$cacheBust"
-        # -----------------------------------------------
 
         Write-Host "remoteImageUrl=<$u>"
         Write-Host "downloadUri=<$downloadUri>"
@@ -95,7 +94,7 @@ function Render-CountdownImage(
 
     $textSize = $graphics.MeasureString($Text, $font)
 
-    # ---- Force everything to single (float) ----
+    # Force numeric types to [single] for PS5 interop
     $cx = [single]($image.Width  / 2.0)
     $cy = [single]($image.Height / 2.0)
     $halfTextW = [single]($textSize.Width  / 2.0)
@@ -116,7 +115,6 @@ function Render-CountdownImage(
 
     $point = New-Object System.Drawing.PointF($cx, $cy)
     [void]$graphics.DrawString($Text, $font, $brushText, $point, $stringFormat)
-    # --------------------------------------------
 
     $jpegCodec = [System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() | Where-Object { $_.MimeType -eq "image/jpeg" }
     $encParams = New-Object System.Drawing.Imaging.EncoderParameters 1
@@ -195,9 +193,9 @@ sh.Run "powershell -NoProfile -ExecutionPolicy Bypass -File ""$ScriptPath""", 0,
 # --- Script path fallback (when run manually) ---
 $scriptPath = Get-ScriptPath
 
-# --- Remote sources ---
-$remoteScriptUrl = "https://raw.githubusercontent.com/TsofnatMaman/AutoCustomBackgroundDesktop/main/script1.ps1"
-$remoteImageUrl  = "https://raw.githubusercontent.com/TsofnatMaman/AutoCustomBackgroundDesktop/main/backgrounds/1.jpg"
+# --- Remote sources (for your reference; not used at runtime) ---
+$remoteScriptUrl = "https://raw.githubusercontent.com/TsofnatMaman/autoCustomBackgroundDesktop/main/script1.ps1"
+$remoteImageUrl  = "https://raw.githubusercontent.com/TsofnatMaman/autoCustomBackgroundDesktop/main/backgrounds/1.jpg"
 
 # --- Target date / countdown ---
 $targetDay  = Get-Date "2025-09-16"
@@ -206,19 +204,16 @@ $currentDay = ($targetDay - $today).Days
 if ($currentDay -le 0) { exit }  # stop when the date has passed
 
 # --- Local paths ---
-$baseImagePath  = "$env:APPDATA\Microsoft\Windows\1.jpg"                   # downloaded image (overwritten daily)
-$finalImagePath = "$env:APPDATA\Microsoft\Windows\wallpaper_current.jpg"   # rendered image used by Windows
+$baseImagePath  = "$env:APPDATA\Microsoft\Windows\1.jpg"                 # downloaded image (overwritten daily)
+$finalImagePath = "$env:APPDATA\Microsoft\Windows\wallpaper_current.jpg" # rendered image used by Windows
 
-# Ensure directories exist
 Ensure-Dir $baseImagePath
 Ensure-Dir $finalImagePath
 
-# Text to render (edit to your preference)
+# Text to render (Hebrew)
 $text = "...עוד $currentDay ימים"
 
-# ------------
-# Main flow 
-# ------------
+# ------------ Main flow ------------
 $downloadOk = Download-BaseImage -RemoteImageUrl $remoteImageUrl -BaseImagePath $baseImagePath
 Render-CountdownImage -BaseImagePath $baseImagePath -FinalImagePath $finalImagePath -Text $text
 Set-WallpaperFromPath -FinalImagePath $finalImagePath
@@ -230,7 +225,6 @@ $dailyTime = "00:30"
 
 $vbsPath = "$env:APPDATA\Microsoft\Windows\run_wallpaper_silent.vbs"
 Ensure-VbsLauncher -ScriptPath $scriptPath -VbsPath $vbsPath
-
 Ensure-DailyTask -TaskName $taskName -VbsPath $vbsPath -DailyTime $dailyTime
 
 Write-Host "Done. Final image: $finalImagePath"
