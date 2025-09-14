@@ -2,6 +2,16 @@
 # Purpose: Download a fresh base image daily, render a countdown text on it,
 #          set it as the desktop wallpaper, and schedule daily + logon updates.
 
+# --- self-elevate once if not admin ---
+if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
+    ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Start-Process -FilePath "powershell.exe" -Verb RunAs -ArgumentList @(
+        "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$PSCommandPath`""
+    )
+    exit
+}
+# --- end self-elevate ---
+
 Add-Type -AssemblyName System.Drawing
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
@@ -186,8 +196,8 @@ sh.Run "powershell -NoProfile -ExecutionPolicy Bypass -File ""$ScriptPath""", 0,
 $scriptPath = Get-ScriptPath
 
 # --- Remote sources ---
-$remoteScriptUrl = "https://raw.githubusercontent.com/TsofnatMaman/autoCustomBackgroundDesktop/main/script1.ps1"
-$remoteImageUrl  = "https://raw.githubusercontent.com/TsofnatMaman/autoCustomBackgroundDesktop/main/backgrounds/1.jpg"
+$remoteScriptUrl = "https://raw.githubusercontent.com/TsofnatMaman/AutoCustomBackgroundDesktop/main/script1.ps1"
+$remoteImageUrl  = "https://raw.githubusercontent.com/TsofnatMaman/AutoCustomBackgroundDesktop/main/backgrounds/1.jpg"
 
 # --- Target date / countdown ---
 $targetDay  = Get-Date "2025-09-16"
@@ -204,7 +214,7 @@ Ensure-Dir $baseImagePath
 Ensure-Dir $finalImagePath
 
 # Text to render (edit to your preference)
-$text = "עוד $currentDay ימים..."
+$text = "...עוד $currentDay ימים"
 
 # ------------
 # Main flow 
