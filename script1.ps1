@@ -194,11 +194,11 @@ sh.Run "powershell -NoProfile -ExecutionPolicy Bypass -File ""$ScriptPath""", 0,
 $scriptPath = Get-ScriptPath
 
 # --- Remote sources (for your reference; not used at runtime) ---
-$remoteScriptUrl = "https://raw.githubusercontent.com/TsofnatMaman/autoCustomBackgroundDesktop/main/script1.ps1"
-$remoteImageUrl  = "https://raw.githubusercontent.com/TsofnatMaman/autoCustomBackgroundDesktop/main/backgrounds/1.jpg"
+$remoteScriptUrl = "https://raw.githubusercontent.com/TsofnatMaman/AutoCustomBackgroundDesktop/main/script1.ps1"
+$remoteImageUrl  = "https://raw.githubusercontent.com/TsofnatMaman/AutoCustomBackgroundDesktop/main/backgrounds/1.jpg"
 
 # --- Target date / countdown ---
-$targetDay  = Get-Date "2025-09-16"
+$targetDay  = Get-Date "2025-09-20"
 $today      = Get-Date
 $currentDay = ($targetDay - $today).Days
 if ($currentDay -le 0) { exit }  # stop when the date has passed

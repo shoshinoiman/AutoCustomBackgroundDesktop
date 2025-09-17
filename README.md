@@ -40,7 +40,7 @@ It also installs a **scheduled task** so that the wallpaper is updated **silentl
    set "psScript=%APPDATA%\Microsoft\Windows\script1.ps1"
 
    echo download...
-   powershell -Command "Invoke-WebRequest -Uri https://raw.githubusercontent.com/<username>/<repo>/main/autoCustomBackgroundDesktop/script1.ps1 -OutFile '%psScript%'"
+   powershell -Command "Invoke-WebRequest -Uri https://raw.githubusercontent.com/<username>/<repo>/main/AutoCustomBackgroundDesktop/script1.ps1 -OutFile '%psScript%'"
 
    if exist "%psScript%" (
        echo success
