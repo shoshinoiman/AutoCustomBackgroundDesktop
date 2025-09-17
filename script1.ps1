@@ -28,12 +28,12 @@ function Get-ScriptPath {
     return $MyInvocation.MyCommand.Path
 }
 
-function Ensure-Dir([string]$Path) {
+function Initialize-Directory([string]$Path) {
     $dir = Split-Path $Path -Parent
     if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
 }
 
-function Download-BaseImage([string]$RemoteImageUrl, [string]$BaseImagePath) {
+function Get-BaseImage([string]$RemoteImageUrl, [string]$BaseImagePath) {
     Write-Host "Downloading base image..."
     $cacheBust  = [Uri]::EscapeDataString((Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffffffK"))
     $downloadOk = $true
@@ -66,7 +66,7 @@ function Download-BaseImage([string]$RemoteImageUrl, [string]$BaseImagePath) {
     return $downloadOk
 }
 
-function Render-CountdownImage(
+function Export-CountdownImage(
     [string]$BaseImagePath,
     [string]$FinalImagePath,
     [string]$Text
@@ -122,7 +122,7 @@ function Render-CountdownImage(
     $encParam       = New-Object System.Drawing.Imaging.EncoderParameter($qualityEncoder, 95L)
     $encParams.Param[0] = $encParam
 
-    Ensure-Dir $FinalImagePath
+    Initialize-Directory $FinalImagePath
     $image.Save($FinalImagePath, $jpegCodec, $encParams)
 
     $graphics.Dispose()
@@ -148,7 +148,7 @@ function Set-WallpaperFromPath([string]$FinalImagePath) {
     [Wallpaper]::SystemParametersInfo(20, 0, $FinalImagePath, 3) | Out-Null
 }
 
-function Ensure-DailyTask(
+function Register-DailyTask(
     [string]$TaskName,
     [string]$VbsPath, 
     [string]$DailyTime
@@ -180,8 +180,8 @@ function Ensure-DailyTask(
     }
 }
 
-function Ensure-VbsLauncher([string]$ScriptPath, [string]$VbsPath) {
-    Ensure-Dir $VbsPath
+function Set-VbsLauncher([string]$ScriptPath, [string]$VbsPath) {
+    Initialize-Directory $VbsPath
     $vbs = @"
 Set sh = CreateObject("Wscript.Shell")
 ' 0 = hidden, False = do not wait
@@ -194,7 +194,7 @@ sh.Run "powershell -NoProfile -ExecutionPolicy Bypass -File ""$ScriptPath""", 0,
 $scriptPath = Get-ScriptPath
 
 # --- Remote sources (for your reference; not used at runtime) ---
-$remoteScriptUrl = "https://raw.githubusercontent.com/TsofnatMaman/AutoCustomBackgroundDesktop/main/script1.ps1"
+# $remoteScriptUrl = "https://raw.githubusercontent.com/TsofnatMaman/AutoCustomBackgroundDesktop/main/script1.ps1"
 $remoteImageUrl  = "https://raw.githubusercontent.com/TsofnatMaman/AutoCustomBackgroundDesktop/main/backgrounds/1.jpg"
 
 # --- Target date / countdown ---
@@ -207,15 +207,15 @@ if ($currentDay -le 0) { exit }  # stop when the date has passed
 $baseImagePath  = "$env:APPDATA\Microsoft\Windows\1.jpg"                 # downloaded image (overwritten daily)
 $finalImagePath = "$env:APPDATA\Microsoft\Windows\wallpaper_current.jpg" # rendered image used by Windows
 
-Ensure-Dir $baseImagePath
-Ensure-Dir $finalImagePath
+Initialize-Directory $baseImagePath
+Initialize-Directory $finalImagePath
 
 # Text to render (Hebrew)
 $text = "...עוד $currentDay ימים"
 
 # ------------ Main flow ------------
-$downloadOk = Download-BaseImage -RemoteImageUrl $remoteImageUrl -BaseImagePath $baseImagePath
-Render-CountdownImage -BaseImagePath $baseImagePath -FinalImagePath $finalImagePath -Text $text
+$downloadOk = Get-BaseImage -RemoteImageUrl $remoteImageUrl -BaseImagePath $baseImagePath
+Export-CountdownImage -BaseImagePath $baseImagePath -FinalImagePath $finalImagePath -Text $text
 Set-WallpaperFromPath -FinalImagePath $finalImagePath
 Write-Host "Wallpaper update success: '$text' (downloadOk=$downloadOk)"
 
@@ -224,7 +224,7 @@ $taskName = "ChangeWallpaperEveryDay"
 $dailyTime = "00:30"
 
 $vbsPath = "$env:APPDATA\Microsoft\Windows\run_wallpaper_silent.vbs"
-Ensure-VbsLauncher -ScriptPath $scriptPath -VbsPath $vbsPath
-Ensure-DailyTask -TaskName $taskName -VbsPath $vbsPath -DailyTime $dailyTime
+Set-VbsLauncher -ScriptPath $scriptPath -VbsPath $vbsPath
+Register-DailyTask -TaskName $taskName -VbsPath $vbsPath -DailyTime $dailyTime
 
 Write-Host "Done. Final image: $finalImagePath"
