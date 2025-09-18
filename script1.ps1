@@ -194,8 +194,8 @@ sh.Run "powershell -NoProfile -ExecutionPolicy Bypass -File ""$ScriptPath""", 0,
 $scriptPath = Get-ScriptPath
 
 # --- Remote sources (for your reference; not used at runtime) ---
-# $remoteScriptUrl = "https://raw.githubusercontent.com/TsofnatMaman/AutoCustomBackgroundDesktop/main/script1.ps1"
-$remoteImageUrl  = "https://raw.githubusercontent.com/TsofnatMaman/AutoCustomBackgroundDesktop/main/backgrounds/1.jpg"
+# $remoteScriptUrl = "https://raw.githubusercontent.com/shoshinoiman/AutoCustomBackgroundDesktop/main/script1.ps1"
+$remoteImageUrl  = "https://raw.githubusercontent.com/shoshinoiman/AutoCustomBackgroundDesktop/main/backgrounds/1.jpg"
 
 # --- Target date / countdown ---
 $targetDay  = Get-Date "2025-10-22"
